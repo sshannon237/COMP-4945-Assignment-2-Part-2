@@ -82,8 +82,8 @@ namespace MulticastReceive {
                 source.CancelAfter(10000);
 
                 await ws.ConnectAsync(serverUri, source.Token);
-                // restricted to 5 iteration only
-                while(ws.State == WebSocketState.Open && socketThreadRunning) {
+                Debug.Log(ws.State == WebSocketState.Open);
+                while(ws.State == WebSocketState.Open && socketThreadRunning)  {
                     Debug.Log("Listening");
                     //Receive buffer
                     var receiveBuffer = new byte[10000];
@@ -132,7 +132,6 @@ namespace MulticastReceive {
             int bodyStart = snakeInfo.IndexOf("body: ") + 6;
             int bodyEnd = snakeInfo.IndexOf("---end-body---");
             string bodyStr = snakeInfo.Substring(bodyStart, bodyEnd - bodyStart);
-            Debug.Log(bodyStr);
 
             // If the snake is a new connection create a new snake
             bool isNewSnake = !snakeMovement.checkIfSnakeExists(parsedUid);
@@ -160,7 +159,7 @@ namespace MulticastReceive {
 
         // Update is called once per frame
         void Update() {
-            Debug.Log("Starting");
+            Debug.Log(socketThreadRunning);
             if(!socketThreadRunning) {
                 GameObject newSnake = snakeCreator.instantiateSnake(newSnakeData.Item1, newSnakeData.Item2);
                 newSnake.GetComponent<BoxCollider2D>().isTrigger = false;
