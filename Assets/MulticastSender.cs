@@ -53,9 +53,8 @@ namespace MulticastSend {
 
                 await ws.ConnectAsync(serverUri, source.Token);
                 if(ws.State == WebSocketState.Open) {
-                    string msg = "hello Tom";
                     ArraySegment<byte> bytesToSend =
-                                new ArraySegment<byte>(Encoding.UTF8.GetBytes(msg));
+                                new ArraySegment<byte>(Encoding.UTF8.GetBytes(snakeInfo));
                     await ws.SendAsync(bytesToSend, WebSocketMessageType.Text,
                                          true, source.Token);
                 }
