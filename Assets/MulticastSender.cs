@@ -43,22 +43,31 @@ namespace MulticastSend {
             //} catch(Exception e) {
             //    //Debug.Log("\n" + e.Message);
             //}
+            try
+            {
+                using (ClientWebSocket ws = new ClientWebSocket())
+                {
+                    Uri serverUri = new Uri("ws://localhost:80/ws.ashx");
 
-            using(ClientWebSocket ws = new ClientWebSocket()) {
-                Uri serverUri = new Uri("ws://localhost:80/ws.ashx");
+                    //Implementation of timeout of 5000 ms
+                    var source = new CancellationTokenSource();
+                    source.CancelAfter(5000);
 
-                //Implementation of timeout of 5000 ms
-                var source = new CancellationTokenSource();
-                source.CancelAfter(5000);
-
-                await ws.ConnectAsync(serverUri, source.Token);
-                if(ws.State == WebSocketState.Open) {
-                    ArraySegment<byte> bytesToSend =
-                                new ArraySegment<byte>(Encoding.UTF8.GetBytes(snakeInfo));
-                    await ws.SendAsync(bytesToSend, WebSocketMessageType.Text,
-                                         true, source.Token);
+                    await ws.ConnectAsync(serverUri, source.Token);
+                    if (ws.State == WebSocketState.Open)
+                    {
+                        ArraySegment<byte> bytesToSend =
+                                    new ArraySegment<byte>(Encoding.UTF8.GetBytes(snakeInfo));
+                        await ws.SendAsync(bytesToSend, WebSocketMessageType.Text,
+                                             true, source.Token);
+                    }
                 }
+            } catch (Exception e)
+            {
+                Debug.Log(e);
             }
+
+           
 
         }
         // Update is called once per frame

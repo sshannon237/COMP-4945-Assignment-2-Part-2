@@ -73,41 +73,51 @@ namespace MulticastReceive {
 
             //}
             //socketThread.Abort();
-            
-            using(ClientWebSocket ws = new ClientWebSocket()) {
-                Uri serverUri = new Uri("ws://localhost:80/ws.ashx");
-                
-                //Implementation of timeout of 5000 ms
-                var source = new CancellationTokenSource();
-                source.CancelAfter(10000);
+            try
+            {
 
-                await ws.ConnectAsync(serverUri, source.Token);
-                Debug.Log(ws.State == WebSocketState.Open);
-                while(ws.State == WebSocketState.Open && socketThreadRunning)  {
-                    Debug.Log("Listening");
-                    //Receive buffer
-                    var receiveBuffer = new byte[10000];
-                    //Multipacket response
-                    var offset = 0;
-                    var dataPerPacket = 1; //Just for example
 
-                    string receivedSnakeInfo = "";
-                    while(true) {
-                        ArraySegment<byte> bytesReceived =
-                                  new ArraySegment<byte>(receiveBuffer, offset, dataPerPacket);
-                        WebSocketReceiveResult result = await ws.ReceiveAsync(bytesReceived,
-                                                                      source.Token);
-                        //Partial data received
-                        Console.WriteLine("Data:{0}",
-                                         Encoding.UTF8.GetString(receiveBuffer, offset, result.Count));
-                        receivedSnakeInfo += Encoding.UTF8.GetString(receiveBuffer, offset, result.Count);
-                        offset += result.Count;
-                        if(result.EndOfMessage)
-                            break;
+                using (ClientWebSocket ws = new ClientWebSocket())
+                {
+                    Uri serverUri = new Uri("ws://localhost:80/ws.ashx");
+
+                    //Implementation of timeout of 5000 ms
+                    var source = new CancellationTokenSource();
+                    source.CancelAfter(10000);
+
+                    await ws.ConnectAsync(serverUri, source.Token);
+                    Debug.Log(ws.State == WebSocketState.Open);
+                    while (ws.State == WebSocketState.Open && socketThreadRunning)
+                    {
+                        Debug.Log("Listening");
+                        //Receive buffer
+                        var receiveBuffer = new byte[10000];
+                        //Multipacket response
+                        var offset = 0;
+                        var dataPerPacket = 1; //Just for example
+
+                        string receivedSnakeInfo = "";
+                        while (true)
+                        {
+                            ArraySegment<byte> bytesReceived =
+                                      new ArraySegment<byte>(receiveBuffer, offset, dataPerPacket);
+                            WebSocketReceiveResult result = await ws.ReceiveAsync(bytesReceived,
+                                                                          source.Token);
+                            //Partial data received
+                            Console.WriteLine("Data:{0}",
+                                             Encoding.UTF8.GetString(receiveBuffer, offset, result.Count));
+                            receivedSnakeInfo += Encoding.UTF8.GetString(receiveBuffer, offset, result.Count);
+                            offset += result.Count;
+                            if (result.EndOfMessage)
+                                break;
+                        }
+                        Debug.Log("Received: " + receivedSnakeInfo);
+                        parseSnake(receivedSnakeInfo);
                     }
-                    Debug.Log("Received: " + receivedSnakeInfo);
-                    parseSnake(receivedSnakeInfo);
                 }
+            } catch (Exception e)
+            {
+                Debug.Log(e);
             }
 
         }
