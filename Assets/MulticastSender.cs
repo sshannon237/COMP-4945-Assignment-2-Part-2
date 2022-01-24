@@ -14,7 +14,8 @@ using UnityEngine.SceneManagement;
 namespace MulticastSend {
     //Worked on By Christopher Spooner, Ethan Sadowski, and Sam Shannon
     public class MulticastSender : MonoBehaviour {
-        //ClientWebSocket ws;
+        ClientWebSocket ws;
+        CancellationTokenSource source;
         //Uri serverUri;
         //CancellationTokenSource source;
 
@@ -25,6 +26,12 @@ namespace MulticastSend {
             //this.source.CancelAfter(5000);
             //ws.ConnectAsync(serverUri, source.Token);
 
+        }
+
+        public void setSocket(ClientWebSocket ws, CancellationTokenSource source)
+        {
+            this.ws = ws;
+            this.source = source;
         }
         public async void send(string snakeInfo) {
             //try {
@@ -43,17 +50,12 @@ namespace MulticastSend {
             //} catch(Exception e) {
             //    //Debug.Log("\n" + e.Message);
             //}
-            try
+            if (this.ws != null)
             {
-                using (ClientWebSocket ws = new ClientWebSocket())
+                try
                 {
-                    Uri serverUri = new Uri("ws://localhost:80/ws.ashx");
 
-                    //Implementation of timeout of 5000 ms
-                    var source = new CancellationTokenSource();
-                    source.CancelAfter(5000);
 
-                    await ws.ConnectAsync(serverUri, source.Token);
                     if (ws.State == WebSocketState.Open)
                     {
                         ArraySegment<byte> bytesToSend =
@@ -61,13 +63,14 @@ namespace MulticastSend {
                         await ws.SendAsync(bytesToSend, WebSocketMessageType.Text,
                                              true, source.Token);
                     }
-                }
-            } catch (Exception e)
-            {
-                Debug.Log(e);
-            }
 
-           
+                }
+                catch (Exception e)
+                {
+                    Debug.Log(e);
+                }
+            }
+            
 
         }
         // Update is called once per frame

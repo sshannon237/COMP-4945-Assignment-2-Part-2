@@ -32,11 +32,19 @@ namespace MulticastReceive {
         Tuple<Guid, List<Vector2>> newSnakeData;
         List<Vector2> coordinateList;
         Guid parsedUid;
+        ClientWebSocket ws;
+        CancellationTokenSource source;
         // Start is called before the first frame update
         void Start() {
             socketThread = new Thread(listen);
             socketThreadRunning = true;
             socketThread.Start();
+        }
+
+        public void setSocket(ClientWebSocket ws, CancellationTokenSource source)
+        {
+            this.ws = ws;
+            this.source = source;
         }
 
         public void setId(Guid id) {
@@ -73,20 +81,10 @@ namespace MulticastReceive {
 
             //}
             //socketThread.Abort();
-            try
+            if (this.ws != null)
             {
-
-
-                using (ClientWebSocket ws = new ClientWebSocket())
+                try
                 {
-                    Uri serverUri = new Uri("ws://localhost:80/ws.ashx");
-
-                    //Implementation of timeout of 5000 ms
-                    var source = new CancellationTokenSource();
-                    source.CancelAfter(10000);
-
-                    await ws.ConnectAsync(serverUri, source.Token);
-                    Debug.Log(ws.State == WebSocketState.Open);
                     while (ws.State == WebSocketState.Open && socketThreadRunning)
                     {
                         Debug.Log("Listening");
@@ -100,12 +98,12 @@ namespace MulticastReceive {
                         while (true)
                         {
                             ArraySegment<byte> bytesReceived =
-                                      new ArraySegment<byte>(receiveBuffer, offset, dataPerPacket);
+                                        new ArraySegment<byte>(receiveBuffer, offset, dataPerPacket);
                             WebSocketReceiveResult result = await ws.ReceiveAsync(bytesReceived,
-                                                                          source.Token);
+                                                                            source.Token);
                             //Partial data received
                             Console.WriteLine("Data:{0}",
-                                             Encoding.UTF8.GetString(receiveBuffer, offset, result.Count));
+                                                Encoding.UTF8.GetString(receiveBuffer, offset, result.Count));
                             receivedSnakeInfo += Encoding.UTF8.GetString(receiveBuffer, offset, result.Count);
                             offset += result.Count;
                             if (result.EndOfMessage)
@@ -115,10 +113,12 @@ namespace MulticastReceive {
                         parseSnake(receivedSnakeInfo);
                     }
                 }
-            } catch (Exception e)
-            {
-                Debug.Log(e);
+                catch (Exception e)
+                {
+                    Debug.Log(e);
+                }
             }
+            
 
         }
 

@@ -12,6 +12,7 @@ using MulticastReceive;
 using SnakeCreation;
 using SnakeMovementController;
 using SnakeBehaviour;
+using System.Net.WebSockets;
 
 namespace UDPController
 {    
@@ -25,19 +26,38 @@ namespace UDPController
         public MulticastReceiver receiver;
 
         // Start is called before the first frame update
-        void Start()
+        async void Start()
         {
-            Application.targetFrameRate = 20;
-            Debug.Log("start");
-            Vector2 startingCoordinate = snakeCreator.generateStartingLocation();
+            try
+            {
 
-            List<Vector2> startingList = new List<Vector2>();
-            startingList.Add(startingCoordinate);
-            GameObject playerSnake = snakeCreator.instantiateSnake(id, startingList);
-            playerSnake.GetComponent<Snake>().createBody(startingCoordinate);
+                Uri serverUri = new Uri("ws://localhost:/ws.ashx");
 
-            receiver.setId(id);
-            snakeMovement.setNativeSnakeId(id);
+                ClientWebSocket ws = new ClientWebSocket();
+                Debug.Log(ws);
+                //Implementation of timeout of 5000 ms
+                CancellationTokenSource source = new CancellationTokenSource();
+                source.CancelAfter(5000);
+                Debug.Log("1234");
+                await ws.ConnectAsync(serverUri, source.Token);
+                Debug.Log(ws);
+                sender.setSocket(ws, source);
+                receiver.setSocket(ws, source);
+                Application.targetFrameRate = 20;
+                Debug.Log("start");
+                Vector2 startingCoordinate = snakeCreator.generateStartingLocation();
+
+                List<Vector2> startingList = new List<Vector2>();
+                startingList.Add(startingCoordinate);
+                GameObject playerSnake = snakeCreator.instantiateSnake(id, startingList);
+                playerSnake.GetComponent<Snake>().createBody(startingCoordinate);
+
+                receiver.setId(id);
+                snakeMovement.setNativeSnakeId(id);
+            } catch (Exception e)
+            {
+                Debug.Log(e);
+            }
         }
 
         // Update is called once per frame
