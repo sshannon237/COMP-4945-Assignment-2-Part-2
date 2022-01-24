@@ -34,15 +34,17 @@ namespace UDPController
                 Uri serverUri = new Uri("ws://localhost:/ws.ashx");
 
                 ClientWebSocket ws = new ClientWebSocket();
+
                 Debug.Log(ws);
                 //Implementation of timeout of 5000 ms
                 CancellationTokenSource source = new CancellationTokenSource();
-                source.CancelAfter(5000);
-                Debug.Log("1234");
+/*                source.CancelAfter(5000);
+*/                Debug.Log("1234");
                 await ws.ConnectAsync(serverUri, source.Token);
                 Debug.Log(ws);
                 sender.setSocket(ws, source);
                 receiver.setSocket(ws, source);
+                receiver.doListen();
                 Application.targetFrameRate = 20;
                 Debug.Log("start");
                 Vector2 startingCoordinate = snakeCreator.generateStartingLocation();

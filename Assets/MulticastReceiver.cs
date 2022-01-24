@@ -36,9 +36,7 @@ namespace MulticastReceive {
         CancellationTokenSource source;
         // Start is called before the first frame update
         void Start() {
-            socketThread = new Thread(listen);
-            socketThreadRunning = true;
-            socketThread.Start();
+            
         }
 
         public void setSocket(ClientWebSocket ws, CancellationTokenSource source)
@@ -49,6 +47,13 @@ namespace MulticastReceive {
 
         public void setId(Guid id) {
             this.id = id;
+        }
+
+        public void doListen()
+        {
+            socketThread = new Thread(listen);
+            socketThreadRunning = true;
+            socketThread.Start();
         }
 
         async void listen() {
@@ -81,24 +86,22 @@ namespace MulticastReceive {
 
             //}
             //socketThread.Abort();
-            if (this.ws != null)
-            {
+
                 try
                 {
-                    while (ws.State == WebSocketState.Open && socketThreadRunning)
+                    while (ws.State == WebSocketState.Open)
                     {
-                        Debug.Log("Listening");
-                        //Receive buffer
+/*                        Debug.Log("Listening");
+*/                        //Receive buffer
                         var receiveBuffer = new byte[10000];
                         //Multipacket response
                         var offset = 0;
                         var dataPerPacket = 1; //Just for example
 
                         string receivedSnakeInfo = "";
-                        while (true)
-                        {
+
                             ArraySegment<byte> bytesReceived =
-                                        new ArraySegment<byte>(receiveBuffer, offset, dataPerPacket);
+                                        new ArraySegment<byte>(receiveBuffer, offset, receiveBuffer.Length);
                             WebSocketReceiveResult result = await ws.ReceiveAsync(bytesReceived,
                                                                             source.Token);
                             //Partial data received
@@ -107,17 +110,21 @@ namespace MulticastReceive {
                             receivedSnakeInfo += Encoding.UTF8.GetString(receiveBuffer, offset, result.Count);
                             offset += result.Count;
                             if (result.EndOfMessage)
-                                break;
-                        }
-                        Debug.Log("Received: " + receivedSnakeInfo);
-                        parseSnake(receivedSnakeInfo);
+                            {
+                                if (receivedSnakeInfo.Length > 1)
+                                {
+                                    parseSnake(receivedSnakeInfo);
+
+                                }
+                             }
+                        
                     }
                 }
                 catch (Exception e)
                 {
                     Debug.Log(e);
                 }
-            }
+            
             
 
         }
@@ -151,17 +158,14 @@ namespace MulticastReceive {
             coordinateList.Add(new Vector2(xcoordinate, ycoordinate));
 
             string[] bodyArr = bodyStr.Split(' ');
-            //Debug.Log("BODY ARR LENGTH: " + bodyArr.Length);
             for(int i = 0; i < bodyArr.Length - 2; i += 2) {
                 coordinateList.Add(new Vector2(float.Parse(bodyArr[i]), float.Parse(bodyArr[i + 1])));
             }
-
+            Debug.Log(isNewSnake && parsedUid != this.id);
             if(isNewSnake && parsedUid != this.id) {
-                //Debug.Log(snakeInfo);
 
                 newSnakeData = new Tuple<Guid, List<Vector2>>(parsedUid, coordinateList);
-                socketThreadRunning = false;
-
+                executeOnMain();
             } else if(uid != this.id.ToString()) {
                 mainThreadUpdate();
             }
@@ -169,18 +173,16 @@ namespace MulticastReceive {
 
         // Update is called once per frame
         void Update() {
-            Debug.Log(socketThreadRunning);
-            if(!socketThreadRunning) {
-                GameObject newSnake = snakeCreator.instantiateSnake(newSnakeData.Item1, newSnakeData.Item2);
+/*            Debug.Log(socketThreadRunning);
+                /*GameObject newSnake = snakeCreator.instantiateSnake(newSnakeData.Item1, newSnakeData.Item2);
                 newSnake.GetComponent<BoxCollider2D>().isTrigger = false;
                 newSnake.GetComponent<BoxCollider2D>().enabled = false;
                 snakeMovement.addSnake(newSnake);
-                snakeCreator.instantiateBody(newSnake, newSnakeData.Item1, newSnakeData.Item2);
+                snakeCreator.instantiateBody(newSnake, newSnakeData.Item1, newSnakeData.Item2);*/
                 
-                socketThread = new Thread(listen);
+                /*socketThread = new Thread(listen);
                 socketThreadRunning = true;
-                socketThread.Start();
-            }
+                socketThread.Start();*/
         }
 
         ~MulticastReceiver() {
@@ -205,6 +207,34 @@ namespace MulticastReceive {
 
         public void mainThreadUpdate() {
             UnityMainThreadDispatcher.Instance().Enqueue(functionExecution());
+        }
+
+        IEnumerator addNetworkSnake()
+        {
+            Debug.Log(newSnakeData.Item1);
+            GameObject newSnake = snakeCreator.instantiateSnake(newSnakeData.Item1, newSnakeData.Item2);
+            newSnake.GetComponent<BoxCollider2D>().isTrigger = false;
+            newSnake.GetComponent<BoxCollider2D>().enabled = false;
+            bool success = true;
+            try
+            {
+                snakeMovement.addSnake(newSnake);
+
+            } catch (Exception e)
+            {
+                Destroy(newSnake);
+                success = false;
+            }
+            if (success)
+            {
+                snakeCreator.instantiateBody(newSnake, newSnakeData.Item1, newSnakeData.Item2);
+            }
+            yield return null;
+        }
+
+        void executeOnMain()
+        {
+            UnityMainThreadDispatcher.Instance().Enqueue(addNetworkSnake());
         }
 
     }

@@ -60,7 +60,8 @@ namespace MulticastSend {
                     {
                         ArraySegment<byte> bytesToSend =
                                     new ArraySegment<byte>(Encoding.UTF8.GetBytes(snakeInfo));
-                        await ws.SendAsync(bytesToSend, WebSocketMessageType.Text,
+/*                        Debug.Log(snakeInfo);
+*/                        await ws.SendAsync(bytesToSend, WebSocketMessageType.Text,
                                              true, source.Token);
                     }
 
