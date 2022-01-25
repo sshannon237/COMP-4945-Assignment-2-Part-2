@@ -35,7 +35,7 @@ namespace MulticastSend {
                     if (ws.State == WebSocketState.Open)
                     {
                         ArraySegment<byte> bytesToSend = new ArraySegment<byte>(Encoding.UTF8.GetBytes(snakeInfo));
-*/                        await ws.SendAsync(bytesToSend, WebSocketMessageType.Text, true, source.Token);
+                        await ws.SendAsync(bytesToSend, WebSocketMessageType.Text, true, source.Token);
                     }
                 }
                 catch (Exception e)
