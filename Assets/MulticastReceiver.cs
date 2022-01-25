@@ -57,76 +57,41 @@ namespace MulticastReceive {
         }
 
         async void listen() {
-            //while (socketThreadRunning)
-            //{
-            //    try
-            //    {
-
-            //        byte[] bytes = new Byte[2000];
-
-            //        //Debug.Log("AT THE TOP");
-
-            //        mcastSocket.ReceiveFrom(bytes, ref remoteEP);
-            //        //Debug.Log(bytes);
-            //        //Debug.Log(bytes.Length);
-
-            //        string snakeInfo = Encoding.ASCII.GetString(bytes, 0, bytes.Length);
-            //        //TODO: Add a conditional check to see what type of message the broadcast is (snake movement / apple locations).
-
-
-
-            //    }
-            //    catch (Exception e)
-            //    {
-            //        Debug.Log(e);
-            //        Console.WriteLine(e.ToString());
-            //        socketThread.Abort();
-            //        mcastSocket.Close();
-            //    }
-
-            //}
-            //socketThread.Abort();
-
-                try
+            try
+            {
+                while (ws.State == WebSocketState.Open)
                 {
-                    while (ws.State == WebSocketState.Open)
+                    //Receive buffer
+                    var receiveBuffer = new byte[10000];
+
+                    //Multipacket response
+                    var offset = 0;
+                    var dataPerPacket = 1; //Just for example
+
+                    string receivedSnakeInfo = "";
+
+                    ArraySegment<byte> bytesReceived =
+                                new ArraySegment<byte>(receiveBuffer, offset, receiveBuffer.Length);
+                    WebSocketReceiveResult result = await ws.ReceiveAsync(bytesReceived,
+                                                                    source.Token);
+                    //Partial data received
+                    Console.WriteLine("Data:{0}",
+                                        Encoding.UTF8.GetString(receiveBuffer, offset, result.Count));
+                    receivedSnakeInfo += Encoding.UTF8.GetString(receiveBuffer, offset, result.Count);
+                    offset += result.Count;
+                    if (result.EndOfMessage)
                     {
-/*                        Debug.Log("Listening");
-*/                        //Receive buffer
-                        var receiveBuffer = new byte[10000];
-                        //Multipacket response
-                        var offset = 0;
-                        var dataPerPacket = 1; //Just for example
-
-                        string receivedSnakeInfo = "";
-
-                            ArraySegment<byte> bytesReceived =
-                                        new ArraySegment<byte>(receiveBuffer, offset, receiveBuffer.Length);
-                            WebSocketReceiveResult result = await ws.ReceiveAsync(bytesReceived,
-                                                                            source.Token);
-                            //Partial data received
-                            Console.WriteLine("Data:{0}",
-                                                Encoding.UTF8.GetString(receiveBuffer, offset, result.Count));
-                            receivedSnakeInfo += Encoding.UTF8.GetString(receiveBuffer, offset, result.Count);
-                            offset += result.Count;
-                            if (result.EndOfMessage)
-                            {
-                                if (receivedSnakeInfo.Length > 1)
-                                {
-                                    parseSnake(receivedSnakeInfo);
-
-                                }
-                             }
-                        
+                        if (receivedSnakeInfo.Length > 1)
+                        {
+                            parseSnake(receivedSnakeInfo);
+                        }
                     }
                 }
-                catch (Exception e)
-                {
-                    Debug.Log(e);
-                }
-            
-            
-
+            }
+            catch (Exception e)
+            {
+                Debug.Log(e);
+            }
         }
 
         void parseSnake(string snakeInfo) {
@@ -172,18 +137,7 @@ namespace MulticastReceive {
         }
 
         // Update is called once per frame
-        void Update() {
-/*            Debug.Log(socketThreadRunning);
-                /*GameObject newSnake = snakeCreator.instantiateSnake(newSnakeData.Item1, newSnakeData.Item2);
-                newSnake.GetComponent<BoxCollider2D>().isTrigger = false;
-                newSnake.GetComponent<BoxCollider2D>().enabled = false;
-                snakeMovement.addSnake(newSnake);
-                snakeCreator.instantiateBody(newSnake, newSnakeData.Item1, newSnakeData.Item2);*/
-                
-                /*socketThread = new Thread(listen);
-                socketThreadRunning = true;
-                socketThread.Start();*/
-        }
+        void Update() {}
 
         ~MulticastReceiver() {
             mcastSocket.Close();

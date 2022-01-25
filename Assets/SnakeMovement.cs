@@ -176,7 +176,6 @@ namespace SnakeMovementController
             }
 
             return vectorInput;
-
         }
     }
 }

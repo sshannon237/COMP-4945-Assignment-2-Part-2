@@ -35,26 +35,19 @@ namespace UDPController
 
                 ClientWebSocket ws = new ClientWebSocket();
 
-                Debug.Log(ws);
-                //Implementation of timeout of 5000 ms
                 CancellationTokenSource source = new CancellationTokenSource();
-/*                source.CancelAfter(5000);
-*/                Debug.Log("1234");
                 await ws.ConnectAsync(serverUri, source.Token);
-                Debug.Log(ws);
                 sender.setSocket(ws, source);
                 receiver.setSocket(ws, source);
                 receiver.doListen();
+                receiver.setId(id);
                 Application.targetFrameRate = 20;
-                Debug.Log("start");
-                Vector2 startingCoordinate = snakeCreator.generateStartingLocation();
 
+                Vector2 startingCoordinate = snakeCreator.generateStartingLocation();
                 List<Vector2> startingList = new List<Vector2>();
                 startingList.Add(startingCoordinate);
                 GameObject playerSnake = snakeCreator.instantiateSnake(id, startingList);
                 playerSnake.GetComponent<Snake>().createBody(startingCoordinate);
-
-                receiver.setId(id);
                 snakeMovement.setNativeSnakeId(id);
             } catch (Exception e)
             {
@@ -81,20 +74,15 @@ namespace UDPController
             snakeInfo += "ycoordinate: " + yPosition.ToString() + "---end-y---";
             snakeInfo += "uid: " + id + "---end-uid---";
 
-            // TODO add handling for the rest of the snake's body
-
             string snakeBodyStr = "body: ";
             List<Vector2> snakeBody = snake.getBodyCoordinateList();
 
             foreach (Vector2 location in snakeBody)
             {
-                //Debug.Log(location.x.ToString());
-                //Debug.Log(location.y.ToString());
                 snakeBodyStr += location.x.ToString() + " " + location.y.ToString() + " ";
             }
             snakeBodyStr += "---end-body---";
             snakeInfo += snakeBodyStr;
-            //Debug.Log(System.Text.ASCIIEncoding.Unicode.GetBytes(snakeInfo).Length);
             return snakeInfo;
         }
     }
