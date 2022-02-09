@@ -83,7 +83,16 @@ namespace MulticastReceive {
                     {
                         if (receivedSnakeInfo.Length > 1)
                         {
-                            parseSnake(receivedSnakeInfo);
+                            if (checkForDisconnect(receivedSnakeInfo))
+                            {
+                                Debug.Log(receivedSnakeInfo.Substring(14));
+                                Guid snakeId = Guid.Parse(receivedSnakeInfo.Substring(14));
+                                removeNetworkSnake(snakeId);
+                            } 
+                            else
+                            {
+                                parseSnake(receivedSnakeInfo);
+                            }
                         }
                     }
                 }
@@ -92,6 +101,15 @@ namespace MulticastReceive {
             {
                 Debug.Log(e);
             }
+        }
+
+        bool checkForDisconnect(string data)
+        {
+            if (data.Contains("Remove Player"))
+            {
+                return true;
+            }
+            return false;
         }
 
         void parseSnake(string snakeInfo) {
@@ -126,7 +144,6 @@ namespace MulticastReceive {
             for(int i = 0; i < bodyArr.Length - 2; i += 2) {
                 coordinateList.Add(new Vector2(float.Parse(bodyArr[i]), float.Parse(bodyArr[i + 1])));
             }
-            Debug.Log(isNewSnake && parsedUid != this.id);
             if(isNewSnake && parsedUid != this.id) {
 
                 newSnakeData = new Tuple<Guid, List<Vector2>>(parsedUid, coordinateList);
@@ -141,6 +158,17 @@ namespace MulticastReceive {
 
         ~MulticastReceiver() {
             mcastSocket.Close();
+        }
+
+        public IEnumerator performDelete(Guid snakeId)
+        {
+            snakeMovement.deleteSnake(snakeId);
+            yield return null;
+        }
+
+        public void removeNetworkSnake(Guid snakeId)
+        {
+            UnityMainThreadDispatcher.Instance().Enqueue(performDelete(snakeId));
         }
 
         public IEnumerator functionExecution() {
@@ -165,7 +193,6 @@ namespace MulticastReceive {
 
         IEnumerator addNetworkSnake()
         {
-            Debug.Log(newSnakeData.Item1);
             GameObject newSnake = snakeCreator.instantiateSnake(newSnakeData.Item1, newSnakeData.Item2);
             newSnake.GetComponent<BoxCollider2D>().isTrigger = false;
             newSnake.GetComponent<BoxCollider2D>().enabled = false;

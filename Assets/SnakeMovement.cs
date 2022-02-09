@@ -29,6 +29,15 @@ namespace SnakeMovementController
             moveNativeSnake();
         }
 
+        public void deleteSnake(Guid snakeId)
+        {
+            int size = getBodySizeById(snakeId);
+            GameObject snakeToRemove = snakes[snakeId.ToString()];
+            Destroy(snakeToRemove);
+            snakes.Remove(snakeId.ToString());
+            removeSnakeParts(snakeId, size);
+        }
+
         public void addSnake(GameObject snake)
         {
             Debug.Log(snake);
