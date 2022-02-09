@@ -12,6 +12,7 @@ using MulticastReceive;
 using SnakeCreation;
 using SnakeMovementController;
 using SnakeBehaviour;
+using System.Net.WebSockets;
 
 namespace UDPController
 {    
@@ -25,19 +26,33 @@ namespace UDPController
         public MulticastReceiver receiver;
 
         // Start is called before the first frame update
-        void Start()
+        async void Start()
         {
-            Application.targetFrameRate = 20;
-            Debug.Log("start");
-            Vector2 startingCoordinate = snakeCreator.generateStartingLocation();
+            try
+            {
 
-            List<Vector2> startingList = new List<Vector2>();
-            startingList.Add(startingCoordinate);
-            GameObject playerSnake = snakeCreator.instantiateSnake(id, startingList);
-            playerSnake.GetComponent<Snake>().createBody(startingCoordinate);
+                Uri serverUri = new Uri("ws://localhost:44312/ws.ashx?id=" + id);
 
-            receiver.setId(id);
-            snakeMovement.setNativeSnakeId(id);
+                ClientWebSocket ws = new ClientWebSocket();
+
+                CancellationTokenSource source = new CancellationTokenSource();
+                await ws.ConnectAsync(serverUri, source.Token);
+                sender.setSocket(ws, source);
+                receiver.setSocket(ws, source);
+                receiver.doListen();
+                receiver.setId(id);
+                Application.targetFrameRate = 20;
+
+                Vector2 startingCoordinate = snakeCreator.generateStartingLocation();
+                List<Vector2> startingList = new List<Vector2>();
+                startingList.Add(startingCoordinate);
+                GameObject playerSnake = snakeCreator.instantiateSnake(id, startingList);
+                playerSnake.GetComponent<Snake>().createBody(startingCoordinate);
+                snakeMovement.setNativeSnakeId(id);
+            } catch (Exception e)
+            {
+                Debug.Log(e);
+            }
         }
 
         // Update is called once per frame
@@ -59,20 +74,15 @@ namespace UDPController
             snakeInfo += "ycoordinate: " + yPosition.ToString() + "---end-y---";
             snakeInfo += "uid: " + id + "---end-uid---";
 
-            // TODO add handling for the rest of the snake's body
-
             string snakeBodyStr = "body: ";
             List<Vector2> snakeBody = snake.getBodyCoordinateList();
 
             foreach (Vector2 location in snakeBody)
             {
-                //Debug.Log(location.x.ToString());
-                //Debug.Log(location.y.ToString());
                 snakeBodyStr += location.x.ToString() + " " + location.y.ToString() + " ";
             }
             snakeBodyStr += "---end-body---";
             snakeInfo += snakeBodyStr;
-            //Debug.Log(System.Text.ASCIIEncoding.Unicode.GetBytes(snakeInfo).Length);
             return snakeInfo;
         }
     }

@@ -32,84 +32,84 @@ namespace MulticastReceive {
         Tuple<Guid, List<Vector2>> newSnakeData;
         List<Vector2> coordinateList;
         Guid parsedUid;
+        ClientWebSocket ws;
+        CancellationTokenSource source;
         // Start is called before the first frame update
         void Start() {
-            socketThread = new Thread(listen);
-            socketThreadRunning = true;
-            socketThread.Start();
+            
+        }
+
+        public void setSocket(ClientWebSocket ws, CancellationTokenSource source)
+        {
+            this.ws = ws;
+            this.source = source;
         }
 
         public void setId(Guid id) {
             this.id = id;
         }
 
+        public void doListen()
+        {
+            socketThread = new Thread(listen);
+            socketThreadRunning = true;
+            socketThread.Start();
+        }
+
         async void listen() {
-            //while (socketThreadRunning)
-            //{
-            //    try
-            //    {
-
-            //        byte[] bytes = new Byte[2000];
-
-            //        //Debug.Log("AT THE TOP");
-
-            //        mcastSocket.ReceiveFrom(bytes, ref remoteEP);
-            //        //Debug.Log(bytes);
-            //        //Debug.Log(bytes.Length);
-
-            //        string snakeInfo = Encoding.ASCII.GetString(bytes, 0, bytes.Length);
-            //        //TODO: Add a conditional check to see what type of message the broadcast is (snake movement / apple locations).
-
-
-
-            //    }
-            //    catch (Exception e)
-            //    {
-            //        Debug.Log(e);
-            //        Console.WriteLine(e.ToString());
-            //        socketThread.Abort();
-            //        mcastSocket.Close();
-            //    }
-
-            //}
-            //socketThread.Abort();
-            
-            using(ClientWebSocket ws = new ClientWebSocket()) {
-                Uri serverUri = new Uri("ws://localhost:80/ws.ashx");
-                
-                //Implementation of timeout of 5000 ms
-                var source = new CancellationTokenSource();
-                source.CancelAfter(10000);
-
-                await ws.ConnectAsync(serverUri, source.Token);
-                Debug.Log(ws.State == WebSocketState.Open);
-                while(ws.State == WebSocketState.Open && socketThreadRunning)  {
-                    Debug.Log("Listening");
+            try
+            {
+                while (ws.State == WebSocketState.Open)
+                {
                     //Receive buffer
                     var receiveBuffer = new byte[10000];
+
                     //Multipacket response
                     var offset = 0;
                     var dataPerPacket = 1; //Just for example
 
                     string receivedSnakeInfo = "";
-                    while(true) {
-                        ArraySegment<byte> bytesReceived =
-                                  new ArraySegment<byte>(receiveBuffer, offset, dataPerPacket);
-                        WebSocketReceiveResult result = await ws.ReceiveAsync(bytesReceived,
-                                                                      source.Token);
-                        //Partial data received
-                        Console.WriteLine("Data:{0}",
-                                         Encoding.UTF8.GetString(receiveBuffer, offset, result.Count));
-                        receivedSnakeInfo += Encoding.UTF8.GetString(receiveBuffer, offset, result.Count);
-                        offset += result.Count;
-                        if(result.EndOfMessage)
-                            break;
+
+                    ArraySegment<byte> bytesReceived =
+                                new ArraySegment<byte>(receiveBuffer, offset, receiveBuffer.Length);
+                    WebSocketReceiveResult result = await ws.ReceiveAsync(bytesReceived,
+                                                                    source.Token);
+                    //Partial data received
+                    Console.WriteLine("Data:{0}",
+                                        Encoding.UTF8.GetString(receiveBuffer, offset, result.Count));
+                    receivedSnakeInfo += Encoding.UTF8.GetString(receiveBuffer, offset, result.Count);
+                    offset += result.Count;
+                    if (result.EndOfMessage)
+                    {
+                        if (receivedSnakeInfo.Length > 1)
+                        {
+                            if (checkForDisconnect(receivedSnakeInfo))
+                            {
+                                Debug.Log(receivedSnakeInfo.Substring(14));
+                                Guid snakeId = Guid.Parse(receivedSnakeInfo.Substring(14));
+                                removeNetworkSnake(snakeId);
+                            } 
+                            else
+                            {
+                                parseSnake(receivedSnakeInfo);
+                            }
+                        }
                     }
-                    Debug.Log("Received: " + receivedSnakeInfo);
-                    parseSnake(receivedSnakeInfo);
                 }
             }
+            catch (Exception e)
+            {
+                Debug.Log(e);
+            }
+        }
 
+        bool checkForDisconnect(string data)
+        {
+            if (data.Contains("Remove Player"))
+            {
+                return true;
+            }
+            return false;
         }
 
         void parseSnake(string snakeInfo) {
@@ -141,40 +141,34 @@ namespace MulticastReceive {
             coordinateList.Add(new Vector2(xcoordinate, ycoordinate));
 
             string[] bodyArr = bodyStr.Split(' ');
-            //Debug.Log("BODY ARR LENGTH: " + bodyArr.Length);
             for(int i = 0; i < bodyArr.Length - 2; i += 2) {
                 coordinateList.Add(new Vector2(float.Parse(bodyArr[i]), float.Parse(bodyArr[i + 1])));
             }
-
             if(isNewSnake && parsedUid != this.id) {
-                //Debug.Log(snakeInfo);
 
                 newSnakeData = new Tuple<Guid, List<Vector2>>(parsedUid, coordinateList);
-                socketThreadRunning = false;
-
+                executeOnMain();
             } else if(uid != this.id.ToString()) {
                 mainThreadUpdate();
             }
         }
 
         // Update is called once per frame
-        void Update() {
-            Debug.Log(socketThreadRunning);
-            if(!socketThreadRunning) {
-                GameObject newSnake = snakeCreator.instantiateSnake(newSnakeData.Item1, newSnakeData.Item2);
-                newSnake.GetComponent<BoxCollider2D>().isTrigger = false;
-                newSnake.GetComponent<BoxCollider2D>().enabled = false;
-                snakeMovement.addSnake(newSnake);
-                snakeCreator.instantiateBody(newSnake, newSnakeData.Item1, newSnakeData.Item2);
-                
-                socketThread = new Thread(listen);
-                socketThreadRunning = true;
-                socketThread.Start();
-            }
-        }
+        void Update() {}
 
         ~MulticastReceiver() {
             mcastSocket.Close();
+        }
+
+        public IEnumerator performDelete(Guid snakeId)
+        {
+            snakeMovement.deleteSnake(snakeId);
+            yield return null;
+        }
+
+        public void removeNetworkSnake(Guid snakeId)
+        {
+            UnityMainThreadDispatcher.Instance().Enqueue(performDelete(snakeId));
         }
 
         public IEnumerator functionExecution() {
@@ -195,6 +189,33 @@ namespace MulticastReceive {
 
         public void mainThreadUpdate() {
             UnityMainThreadDispatcher.Instance().Enqueue(functionExecution());
+        }
+
+        IEnumerator addNetworkSnake()
+        {
+            GameObject newSnake = snakeCreator.instantiateSnake(newSnakeData.Item1, newSnakeData.Item2);
+            newSnake.GetComponent<BoxCollider2D>().isTrigger = false;
+            newSnake.GetComponent<BoxCollider2D>().enabled = false;
+            bool success = true;
+            try
+            {
+                snakeMovement.addSnake(newSnake);
+
+            } catch (Exception e)
+            {
+                Destroy(newSnake);
+                success = false;
+            }
+            if (success)
+            {
+                snakeCreator.instantiateBody(newSnake, newSnakeData.Item1, newSnakeData.Item2);
+            }
+            yield return null;
+        }
+
+        void executeOnMain()
+        {
+            UnityMainThreadDispatcher.Instance().Enqueue(addNetworkSnake());
         }
 
     }
