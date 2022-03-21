@@ -31,7 +31,7 @@ namespace UDPController
             try
             {
 
-                Uri serverUri = new Uri("wss://192.168.1.69:44312/ws.ashx?id=" + id);
+                Uri serverUri = new Uri("ws://192.168.1.69:44312/ws.ashx?id=" + id);
 
                 ClientWebSocket ws = new ClientWebSocket();
 
